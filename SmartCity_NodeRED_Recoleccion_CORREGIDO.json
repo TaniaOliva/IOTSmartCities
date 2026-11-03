@@ -1,0 +1,276 @@
+[
+  {
+    "id": "mqttbroker1",
+    "type": "mqtt-broker",
+    "name": "HiveMQ público (pruebas)",
+    "broker": "broker.hivemq.com",
+    "port": "1883",
+    "clientid": "smartcity-nodered-demo",
+    "autoConnect": true,
+    "usetls": false,
+    "protocolVersion": "4",
+    "keepalive": "60",
+    "cleansession": true,
+    "autoUnsubscribe": true,
+    "birthTopic": "",
+    "birthQos": "0",
+    "birthPayload": "",
+    "birthMsg": {},
+    "closeTopic": "",
+    "closeQos": "0",
+    "closePayload": "",
+    "closeMsg": {},
+    "willTopic": "",
+    "willQos": "0",
+    "willPayload": "",
+    "willMsg": {},
+    "userProps": "",
+    "sessionExpiry": ""
+  },
+  {
+    "id": "uibase1",
+    "type": "ui-base",
+    "name": "Smart City",
+    "path": "/dashboard",
+    "appIcon": "",
+    "includeClientData": true,
+    "acceptsClientConfig": [
+      "ui-notification",
+      "ui-control",
+      "ui-text",
+      "ui-template"
+    ],
+    "showPathInSidebar": true,
+    "navigationStyle": "default",
+    "titleBarStyle": "default",
+    "showReconnectNotification": true,
+    "notificationDisplayTime": 1,
+    "showDisconnectNotification": true,
+    "allowInstall": false
+  },
+  {
+    "id": "uipage1",
+    "type": "ui-page",
+    "name": "Gestión de residuos",
+    "ui": "uibase1",
+    "path": "smart-city",
+    "icon": "delete",
+    "layout": "grid",
+    "theme": "",
+    "breakpoints": [
+      {
+        "name": "Default",
+        "px": "0",
+        "cols": "3"
+      },
+      {
+        "name": "Tablet",
+        "px": "576",
+        "cols": "6"
+      },
+      {
+        "name": "小",
+        "px": "768",
+        "cols": "9"
+      },
+      {
+        "name": "Large",
+        "px": "1024",
+        "cols": "12"
+      }
+    ],
+    "order": 1,
+    "className": "",
+    "visible": "true",
+    "disabled": "false"
+  },
+  {
+    "id": "uigroup1",
+    "type": "ui-group",
+    "name": "Monitoreo de contenedores",
+    "page": "uipage1",
+    "width": "12",
+    "height": "1",
+    "order": 1,
+    "showTitle": true,
+    "className": "",
+    "visible": "true",
+    "disabled": "false"
+  },
+  {
+    "id": "mqttin1",
+    "type": "mqtt in",
+    "z": "flow1",
+    "name": "Lecturas Wokwi por MQTT",
+    "x": 180,
+    "y": 140,
+    "topic": "smartcity/residuos/lecturas",
+    "qos": "0",
+    "datatype": "auto-detect",
+    "broker": "mqttbroker1",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "wires": [
+      [
+        "json1"
+      ]
+    ]
+  },
+  {
+    "id": "json1",
+    "type": "json",
+    "z": "flow1",
+    "name": "Convertir JSON",
+    "x": 380,
+    "y": 140,
+    "property": "payload",
+    "action": "",
+    "pretty": false,
+    "checkall": "true,",
+    "repair": false,
+    "wires": [
+      [
+        "normalizar1"
+      ]
+    ]
+  },
+  {
+    "id": "normalizar1",
+    "type": "function",
+    "z": "flow1",
+    "name": "Normalizar lectura MQTT",
+    "x": 590,
+    "y": 140,
+    "func": "// Acepta el formato acordado con Wokwi.\nconst d = msg.payload;\nif (!d || typeof d !== 'object') return null;\nmsg.payload = {\n  deviceId: d.deviceId || d.id || d.contenedorId,\n  location: d.location || d.ubicacion || 'Ubicación no definida',\n  value: d.value !== undefined ? d.value : d.llenado,\n  sensorStatus: d.sensorStatus || d.sensor || 'operativo',\n  source: 'Wokwi'\n};\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "wires": [
+      [
+        "actualizar1"
+      ]
+    ]
+  },
+  {
+    "id": "injectsim1",
+    "type": "inject",
+    "z": "flow1",
+    "name": "Simulación automática (cada 5 s)",
+    "x": 170,
+    "y": 300,
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "5",
+    "crontab": "",
+    "once": true,
+    "onceDelay": "1",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "wires": [
+      [
+        "simular1"
+      ]
+    ]
+  },
+  {
+    "id": "simular1",
+    "type": "function",
+    "z": "flow1",
+    "name": "Generar lecturas de prueba",
+    "x": 390,
+    "y": 300,
+    "func": "// Simula cada contenedor de forma independiente.\n// Tras una recolección, mantiene SOLO ese contenedor en 0% durante 15 segundos.\nconst base = [\n {deviceId:'CONT-01', location:'Mercado Municipal', initial:35},\n {deviceId:'CONT-02', location:'Parque Central', initial:94},\n {deviceId:'CONT-03', location:'Centro', initial:63},\n {deviceId:'CONT-04', location:'Colonia Palmira', initial:19}\n];\nlet bins = flow.get('bins') || {};\nconst now = Date.now();\nconst out = base.map(b => {\n  const old = bins[b.deviceId] || {};\n  let next;\n  if (old.holdUntil && now < old.holdUntil) {\n    next = 0;\n  } else {\n    const current = Number.isFinite(old.fill) ? old.fill : b.initial;\n    next = Math.min(100, Math.max(0, current + (Math.random() < 0.65 ? 1 : 0)));\n  }\n  return {payload:{deviceId:b.deviceId, location:b.location, value:next, sensorStatus:'operativo', source:'Simulación'}};\n});\nreturn [out];",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "wires": [
+      [
+        "actualizar1"
+      ]
+    ]
+  },
+  {
+    "id": "actualizar1",
+    "type": "function",
+    "z": "flow1",
+    "name": "Actualizar estado y prioridades",
+    "x": 850,
+    "y": 220,
+    "func": "// Procesa lecturas MQTT/simuladas y acciones individuales de recolección.\nlet bins = flow.get('bins') || {};\nconst now = new Date();\nconst d = msg.payload || {};\n\nif (d.action === 'collect') {\n  const id = String(d.deviceId || '');\n  if (!['CONT-01','CONT-02','CONT-03','CONT-04'].includes(id) || !bins[id]) {\n    node.warn('Recolección ignorada: identificador inválido o contenedor aún sin lectura: ' + id);\n    return null;\n  }\n  // Modifica únicamente el contenedor cuyo botón fue pulsado.\n  bins[id] = {\n    ...bins[id],\n    fill: 0,\n    state: 'NORMAL',\n    sensorStatus: 'OPERATIVO',\n    source: 'Recolección registrada',\n    lastSeen: now.toISOString(),\n    lastCollection: now.toLocaleString('es-HN'),\n    holdUntil: Date.now() + 15000,\n    priority: 3\n  };\n  node.status({fill:'green',shape:'dot',text:'Recolección: ' + id});\n  flow.set('bins', bins);\n} else {\n  const id = d.deviceId;\n  if (!id || !['CONT-01','CONT-02','CONT-03','CONT-04'].includes(id)) {\n    node.warn('Lectura ignorada: deviceId desconocido o vacío');\n    return null;\n  }\n  const status = String(d.sensorStatus || 'operativo').toLowerCase();\n  const raw = d.value;\n  const valid = status === 'operativo' && typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 && raw <= 100;\n  const old = bins[id] || {};\n  // En modo simulación, respeta los 15 segundos posteriores a la recolección.\n  const recentlyCollected = old.holdUntil && Date.now() < old.holdUntil && String(d.source || '').toLowerCase() === 'simulación';\n  const fill = recentlyCollected ? 0 : (valid ? Math.round(raw) : (old.fill ?? null));\n  const state = !valid && !recentlyCollected ? 'SIN DATOS' : (fill >= 90 ? 'CRÍTICO' : fill >= 50 ? 'ATENCIÓN' : 'NORMAL');\n  bins[id] = {\n    ...old,\n    deviceId:id,\n    location:d.location || old.location || 'Ubicación no definida',\n    fill,\n    state,\n    sensorStatus: (valid || recentlyCollected) ? 'OPERATIVO' : (status === 'operativo' ? 'LECTURA INVÁLIDA' : 'SIN CONEXIÓN'),\n    source: recentlyCollected ? 'Recolección registrada' : (d.source || 'MQTT'),\n    lastSeen:now.toISOString(),\n    priority: state === 'CRÍTICO' ? 1 : state === 'ATENCIÓN' ? 2 : state === 'NORMAL' ? 3 : 4\n  };\n  flow.set('bins', bins);\n}\n\nconst defaults = [\n ['CONT-01','Mercado Municipal'],['CONT-02','Parque Central'],\n ['CONT-03','Centro'],['CONT-04','Colonia Palmira']\n];\nconst list = defaults.map(([deviceId,location]) => bins[deviceId] || ({deviceId,location,fill:null,state:'SIN DATOS',sensorStatus:'ESPERANDO',source:'—',lastSeen:null,priority:5}));\nlist.sort((a,b) => a.priority - b.priority || (b.fill ?? -1) - (a.fill ?? -1));\nconst count = s => list.filter(x => x.state === s).length;\nmsg.payload = {\n containers:list, total:list.length, normal:count('NORMAL'),\n attention:count('ATENCIÓN'), critical:count('CRÍTICO'),\n offline:list.filter(x => x.sensorStatus !== 'OPERATIVO').length,\n updatedAt:now.toLocaleString('es-HN')\n};\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "wires": [
+      [
+        "uitemplate1",
+        "debug1"
+      ]
+    ]
+  },
+  {
+    "id": "uitemplate1",
+    "type": "ui-template",
+    "z": "flow1",
+    "name": "Panel Smart City (recolección individual corregida)",
+    "x": 1110,
+    "y": 200,
+    "group": "uigroup1",
+    "page": "",
+    "ui": "uibase1",
+    "order": 1,
+    "width": "12",
+    "height": "10",
+    "head": "",
+    "format": "<template>\n  <div class=\"sc-wrap\" v-if=\"msg.payload\">\n    <div class=\"sc-top\"><div><div class=\"sc-kicker\">SMART CITY · HONDURAS</div><h2>Gestión inteligente de residuos</h2><p>Monitoreo en tiempo real de contenedores urbanos</p></div><div class=\"sc-live\"><span></span> SISTEMA ACTIVO</div></div>\n    <div class=\"sc-stats\">\n      <div class=\"sc-stat\"><small>TOTAL</small><strong>{{msg.payload.total}}</strong><em>Contenedores</em></div>\n      <div class=\"sc-stat green\"><small>NORMAL</small><strong>{{msg.payload.normal}}</strong><em>Menos de 50%</em></div>\n      <div class=\"sc-stat amber\"><small>ATENCIÓN</small><strong>{{msg.payload.attention}}</strong><em>50% a 89%</em></div>\n      <div class=\"sc-stat red\"><small>CRÍTICOS</small><strong>{{msg.payload.critical}}</strong><em>90% o más</em></div>\n    </div>\n    <h3>Estado de contenedores · Prioridad de recolección</h3>\n    <div class=\"sc-grid\">\n      <article v-for=\"c in msg.payload.containers\" :key=\"c.deviceId\" class=\"sc-card\" :class=\"c.state==='CRÍTICO'?'critical':c.state==='ATENCIÓN'?'attention':c.state==='NORMAL'?'normal':'offline'\">\n        <div class=\"sc-card-head\"><div><b>{{c.deviceId}}</b><small>{{c.location}}</small></div><span class=\"sc-pill\">{{c.state}}</span></div>\n        <div class=\"sc-value\">{{c.fill===null?'--':c.fill+'%'}} <small>LLENADO</small></div>\n        <div class=\"sc-track\"><div class=\"sc-bar\" :style=\"{width:(c.fill===null?0:c.fill)+'%'}\"></div></div>\n        <div class=\"sc-meta\"><span>Sensor: {{c.sensorStatus}}</span><span>Fuente: {{c.source}}</span></div>\n        <div class=\"sc-priority\">{{c.state==='CRÍTICO'?'RECOLECCIÓN INMEDIATA':c.state==='ATENCIÓN'?'PROGRAMAR RECOLECCIÓN':c.state==='NORMAL'?'SIN ACCIÓN REQUERIDA':'VERIFICAR SENSOR'}}</div>\n        <button class=\"sc-collect\" :disabled=\"c.fill===null || c.fill===0 || c.sensorStatus!=='OPERATIVO'\" @click.stop=\"send({payload:{action:'collect',deviceId:c.deviceId}})\">✓ Registrar recolección</button>\n      </article>\n    </div>\n    <div class=\"sc-foot\">Última actualización del panel: {{msg.payload.updatedAt}} · Contenedores ordenados por prioridad</div>\n  </div>\n  <div v-else class=\"sc-empty\">Esperando la primera lectura de los sensores…</div>\n</template>\n<style>\n.sc-wrap{font-family:Inter,Arial,sans-serif;color:#e8eef7;padding:10px;background:#0b1220;border-radius:16px}.sc-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px}.sc-kicker{font-size:11px;letter-spacing:2px;color:#67d6b0;font-weight:800}.sc-top h2{margin:5px 0;font-size:25px;font-weight:800}.sc-top p{margin:0;color:#91a0b5;font-size:13px}.sc-live{font-size:11px;color:#8ee4b5;background:#123329;padding:9px 12px;border-radius:30px;font-weight:800}.sc-live span{display:inline-block;width:7px;height:7px;border-radius:50%;background:#38d996;margin-right:6px}.sc-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:24px}.sc-stat{background:#172337;border:1px solid #26364c;border-radius:13px;padding:15px}.sc-stat small{display:block;color:#9eacc0;font-size:10px;font-weight:800;letter-spacing:1px}.sc-stat strong{display:block;font-size:30px;margin:5px 0}.sc-stat em{font-style:normal;color:#8c9bb0;font-size:11px}.sc-stat.green strong{color:#4ade9b}.sc-stat.amber strong{color:#fbbf24}.sc-stat.red strong{color:#fb7185}.sc-wrap h3{font-size:16px;margin:0 0 12px}.sc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.sc-card{background:#142033;border:1px solid #2a3b52;border-left:4px solid #64748b;border-radius:13px;padding:15px;min-width:0}.sc-card.normal{border-left-color:#34d399}.sc-card.attention{border-left-color:#fbbf24}.sc-card.critical{border-left-color:#fb536b}.sc-card.offline{border-left-color:#94a3b8}.sc-card-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.sc-card-head b{display:block;font-size:14px}.sc-card-head small{display:block;color:#95a4b8;margin-top:3px;font-size:11px}.sc-pill{font-size:9px;font-weight:900;padding:5px 8px;border-radius:20px;background:#26364c;white-space:nowrap}.normal .sc-pill{color:#4ade9b;background:#123329}.attention .sc-pill{color:#fbbf24;background:#3b2e13}.critical .sc-pill{color:#fb7185;background:#401e2b}.offline .sc-pill{color:#cbd5e1;background:#334155}.sc-value{font-size:29px;font-weight:800;margin:17px 0 9px}.sc-value small{font-size:10px;color:#91a0b5;letter-spacing:1px}.sc-track{height:9px;background:#29384d;border-radius:10px;overflow:hidden}.sc-bar{height:100%;background:#34d399;border-radius:10px}.attention .sc-bar{background:#fbbf24}.critical .sc-bar{background:#fb536b}.offline .sc-bar{background:#64748b}.sc-meta{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:#9aa9bd;font-size:10px;margin-top:12px}.sc-priority{font-size:10px;font-weight:800;letter-spacing:.4px;margin-top:12px;color:#c7d2e1}.critical .sc-priority{color:#fb7185}.attention .sc-priority{color:#fbbf24}.sc-collect{margin-top:13px;border:0;border-radius:8px;padding:9px 12px;background:#1d7455;color:#fff;font-weight:800;font-size:11px;cursor:pointer}.sc-collect:hover{background:#25966d}.sc-collect:disabled{opacity:.35;cursor:not-allowed}.sc-foot{font-size:10px;color:#8292a8;margin-top:18px}.sc-empty{padding:30px;text-align:center;color:#91a0b5}@media(max-width:700px){.sc-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.sc-grid{grid-template-columns:1fr}.sc-top h2{font-size:20px}}\n</style>",
+    "storeOutMessages": true,
+    "fwdInMessages": true,
+    "resendOnRefresh": true,
+    "templateScope": "local",
+    "className": "",
+    "wires": [
+      [
+        "actualizar1"
+      ]
+    ],
+    "outputs": 1
+  },
+  {
+    "id": "debug1",
+    "type": "debug",
+    "z": "flow1",
+    "name": "Resumen recibido",
+    "x": 1110,
+    "y": 300,
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "wires": []
+  },
+  {
+    "id": "comment1",
+    "type": "comment",
+    "z": "flow1",
+    "name": "INTEGRACIÓN WOKWI",
+    "info": "La simulación y las lecturas MQTT actualizan los contenedores. Cada tarjeta permite registrar una recolección y reiniciar el nivel a 0%.",
+    "x": 180,
+    "y": 60,
+    "wires": []
+  }
+]
