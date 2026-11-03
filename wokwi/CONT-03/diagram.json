@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "author": "Equipo IoT Smart Cities",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp",
+      "top": 102.8,
+      "left": -157.84,
+      "rotate": 180,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-hc-sr04",
+      "id": "ultrasonic1",
+      "top": -56.1,
+      "left": -186.5,
+      "attrs": { "distance": "55" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn1",
+      "top": 198.2,
+      "left": -28.8,
+      "attrs": { "color": "green", "xray": "1" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn2",
+      "top": 198.2,
+      "left": -240,
+      "attrs": { "color": "green", "xray": "1" }
+    }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "esp:5V", "ultrasonic1:VCC", "red", [ "v0" ] ],
+    [ "esp:GND.1", "ultrasonic1:GND", "black", [ "v-76.65", "h-9.6" ] ],
+    [ "esp:5", "ultrasonic1:TRIG", "green", [ "v-172.8", "h-67.2" ] ],
+    [ "ultrasonic1:ECHO", "esp:18", "green", [ "v0" ] ],
+    [ "btn1:1.l", "esp:25", "green", [ "h0" ] ],
+    [ "btn1:2.r", "esp:GND.2", "green", [ "v67.4", "h-191.8" ] ],
+    [ "btn2:1.r", "esp:26", "green", [ "v0" ] ],
+    [ "btn2:2.l", "esp:GND.3", "green", [ "v9.8", "h86.4" ] ]
+  ],
+  "dependencies": {
+    "wokwi-arduino-libraries": [
+      "WiFi",
+      "PubSubClient"
+    ]
+  }
+}
