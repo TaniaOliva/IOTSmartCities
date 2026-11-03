@@ -12,7 +12,6 @@ Wokwi (ESP32 + HC-SR04) → MQTT (broker.hivemq.com, tópico smartcity/residuos/
 - CONT-01: Mercado Municipal
 - CONT-02: Parque Central
 - CONT-03: Centro
-- CONT-04: Colonia Palmira
 
 ## Reglas de estado
 - Normal: menos de 50 %
@@ -29,10 +28,9 @@ Wokwi (ESP32 + HC-SR04) → MQTT (broker.hivemq.com, tópico smartcity/residuos/
 5. Desactivar el nodo "Simulación automática" para ver solo los datos de Wokwi.
 
 ## Proyectos en Wokwi
-- CONT-01: [enlace]
-- CONT-02: [enlace]
-- CONT-03: [enlace]
-- CONT-04: [enlace]
+- CONT-01: [https://wokwi.com/projects/479626489623610369]
+- CONT-02: [https://wokwi.com/projects/479627019385405441]
+- CONT-03: [https://wokwi.com/projects/479627082262235137]
 
 ## Estructura del repositorio
 - wokwi/: código y circuito de cada contenedor
